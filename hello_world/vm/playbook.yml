@@ -1,0 +1,46 @@
+- hosts: all
+  become: yes
+  become_user: root
+  become_method: sudo
+  tasks:
+  - name: prerequisites
+    ansible.builtin.apt:
+      name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg2
+      - software-properties-common
+      - openjdk-11-jre
+      state: present
+      update_cache: yes
+  - name: Add Docker and Jenkins GPG
+    ansible.builtin.apt_key:
+      url: "{{ item.url }}"
+      keyring: "{{ item.keyring }}"
+    loop:
+    - { url: 'https://download.docker.com/linux/ubuntu/gpg', keyring: '/usr/share/keyrings/ubuntu-docker.gpg' }
+    - { url: 'https://pkg.jenkins.io/debian-stable/jenkins.io.key', keyring: '/usr/share/keyrings/ubuntu-jenkins.gpg'}
+  - name: Add Docker and Jenkins repository
+    ansible.builtin.apt_repository:
+      repo: "{{ item.repo }}"
+      filename: "{{ item.filename }}"
+    loop:
+    - { repo: 'deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-docker.gpg] https://download.docker.com/linux/ubuntu jammy stable', filename: 'docker.list' }
+    - { repo: 'deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-jenkins.gpg] https://pkg.jenkins.io/debian-stable binary/', filename: 'jenkins.list'}
+  - name: Install docker daemon, docker client, docker compose plugin, containerd (CRI) and Jenkins
+    ansible.builtin.apt:
+      name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+      - jenkins
+      update_cache: yes
+      state: present
+  - name: Append user Jenkins to docker group
+    ansible.builtin.user:
+      name: jenkins
+      groups: docker
+      append: yes
+
